@@ -1,0 +1,27 @@
+{
+	"name": "matrix-capturetheflags-CSRF",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "nodemon --exec tsx src/main.ts",
+		"build": "tsc",
+		"run": "node dist/main.js"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@flydotio/dockerfile": "^0.5.9",
+		"@types/node": "^22.8.6",
+		"nodemon": "^3.1.7",
+		"ts-node": "^10.9.2",
+		"tsx": "^4.19.2",
+		"typescript": "^5.6.3"
+	},
+	"dependencies": {
+		"@types/express": "^5.0.0",
+		"express": "^4.21.1"
+	}
+}
